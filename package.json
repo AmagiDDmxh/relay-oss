@@ -1,0 +1,17 @@
+{
+  "name": "whatsapp-relay-oss",
+  "private": true,
+  "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build:sdk && npm --workspace apps/demo run build",
+    "test": "npm run test:sdk && npm --workspace apps/demo run test",
+    "dev": "npm run dev:demo",
+    "dev:demo": "npm --workspace apps/demo run dev",
+    "build:sdk": "npm --workspace packages/sdk run build",
+    "test:sdk": "npm --workspace packages/sdk run test"
+  }
+}
