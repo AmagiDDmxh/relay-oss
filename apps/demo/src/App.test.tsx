@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { ChatResponse, MessageResponse } from '@squady/whatsapp-relay';
@@ -163,6 +163,53 @@ describe('WhatsApp Relay demo visual smoke', () => {
     expect(screen.getByRole('button', { name: /Logout all/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'WhatsApp' })).toBeInTheDocument();
   });
+
+  it('refreshes the pairing QR from bind/status polling updates', async () => {
+    const user = userEvent.setup();
+    const { relayClient } = await import('./lib/api');
+    vi.mocked(relayClient.auth.status).mockResolvedValue({
+      phase: 'idle',
+      recommended_action: 'start_bind',
+      reason_code: 'NO_ACTIVE_SESSION',
+      can_start_bind: true,
+      device_id: 'watch_demo_001',
+      device_binding: { bound: false, state: 'unbound' },
+      binding: null,
+      session: null,
+      server_time: '2026-06-08T00:00:00Z',
+    });
+    vi.mocked(relayClient.auth.startBind).mockResolvedValue({
+      binding_id: 'bind_1',
+      session_id: 'session_demo_001',
+      status: 'QR_READY',
+      qr_code: 'first-qr',
+      expires_at: '2026-06-08T00:01:00Z',
+      poll_after_seconds: 1,
+    });
+    vi.mocked(relayClient.auth.bindStatus).mockResolvedValue({
+      binding_id: 'bind_1',
+      session_id: 'session_demo_001',
+      status: 'QR_READY',
+      qr_code: 'rotated-qr',
+      expires_at: '2026-06-08T00:02:00Z',
+      poll_after_seconds: 1,
+    });
+
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: 'WhatsApp' }));
+    await user.click(await screen.findByRole('button', { name: '开始绑定' }));
+
+    const qrImage = (await screen.findByAltText('WhatsApp pairing QR code')) as HTMLImageElement;
+    await waitFor(() => expect(qrImage.src).toContain('data:image/png'));
+    const firstSrc = qrImage.src;
+
+    await waitFor(() => expect(relayClient.auth.bindStatus).toHaveBeenCalledWith({ bindingId: 'bind_1', deviceId: 'watch_demo_001' }), { timeout: 2500 });
+
+    await waitFor(() => expect(qrImage.src).not.toBe(firstSrc), { timeout: 2500 });
+    const refreshedExpiry = new Date('2026-06-08T00:02:00Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    expect(screen.getByText(`过期时间 ${refreshedExpiry}`)).toBeInTheDocument();
+  }, 10_000);
 
   it('ignores heartbeat UI side effects and replays missed events after reconnect', async () => {
     window.localStorage.setItem('whatsapp-relay.event-cursor.v1', 'cursor_1');

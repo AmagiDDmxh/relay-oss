@@ -454,6 +454,20 @@ describe('createRelayClient', () => {
     expect(initHeaders[0]?.get('X-Owner-User-ID')).toBe('user_1');
   });
 
+  it('rejects header-auth websocket subscriptions with the default browser factory', () => {
+    const client = createRelayClient({
+      baseUrl: 'https://relay.example.com',
+      supplierApiKey: 'sk_test',
+      deviceId: 'watch_1',
+      ownerUserId: 'user_1',
+    });
+
+    const subscribe = () => client.events.subscribe({ sessionId: 'sess_1' });
+
+    expect(subscribe).toThrow(RelayValidationError);
+    expect(subscribe).toThrow('eventToken or supplierApiKeyInQuery');
+  });
+
   it('streams events with async backpressure and stream helpers', async () => {
     const source = (async function* () {
       yield { event_id: 'evt_1', event_type: 'heartbeat', timestamp: '2026-06-08T00:00:00Z', data: {} };

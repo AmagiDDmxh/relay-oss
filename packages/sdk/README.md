@@ -112,6 +112,8 @@ await relay.auth.logout({ session_id: 'sess_1' })
 
 ## WebSocket 订阅
 
+默认 SDK factory 使用浏览器原生 `WebSocket`，不能发送自定义请求 header。浏览器或公开 App 端必须传 `eventToken`；只有内部 demo 可显式使用 `supplierApiKeyInQuery`，长期 `supplierApiKey` 不应暴露给终端。后端/Node/Native 如需 header 认证，必须提供支持 header 的自定义 `webSocketFactory`。
+
 ```ts
 import { isMessageNewEvent } from '@squady/whatsapp-relay'
 

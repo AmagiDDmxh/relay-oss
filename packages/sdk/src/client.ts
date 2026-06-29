@@ -1,5 +1,5 @@
 import { RelayEventStream } from './events';
-import { RelayConflictError } from './errors';
+import { RelayConflictError, RelayValidationError } from './errors';
 import { buildAuthHeaders, createRequester, optionalIntegerInRange, optionalNonNegativeInteger, requireNonEmptyBody, requiredString, scopeFrom, withQuery } from './internal';
 import type {
   AccountProfileInput,
@@ -341,6 +341,7 @@ export function createRelayClient(config: RelayClientConfig): RelayClient {
         }
       },
       subscribe(input = {}) {
+        const hasCustomWebSocketFactory = config.webSocketFactory !== undefined;
         const wsFactory = config.webSocketFactory ?? ((url: string) => new WebSocket(url));
         const wsBase = baseUrl.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
         const params = new URLSearchParams();
@@ -351,12 +352,17 @@ export function createRelayClient(config: RelayClientConfig): RelayClient {
           if (input.after) params.set('after', input.after);
           if (input.sessionId) params.set('session_id', input.sessionId);
           params.set('supplier_api_key', config.supplierApiKey);
-        } else {
+        } else if (hasCustomWebSocketFactory) {
           if (input.after) params.set('after', input.after);
           if (input.sessionId) params.set('session_id', input.sessionId);
+        } else {
+          throw new RelayValidationError(
+            'events.subscribe requires eventToken or supplierApiKeyInQuery when using the default browser WebSocket factory',
+            { field: 'eventToken' },
+          );
         }
         const suffix = params.toString() ? `?${params}` : '';
-        const headers = input.eventToken || input.supplierApiKeyInQuery ? undefined : buildAuthHeaders(config.supplierApiKey, defaultScope);
+        const headers = input.eventToken || input.supplierApiKeyInQuery || !hasCustomWebSocketFactory ? undefined : buildAuthHeaders(config.supplierApiKey, defaultScope);
         const stream = new RelayEventStream(wsFactory(`${wsBase}/ws/v1/events${suffix}`, headers ? { headers } : undefined));
         input.signal?.addEventListener('abort', () => void stream.close(), { once: true });
         return stream;

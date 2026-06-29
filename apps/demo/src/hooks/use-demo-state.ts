@@ -912,12 +912,26 @@ export function useDemoState() {
         const nextStatus = normalizeBindStatus(binding);
         const sessionId = binding.session_id ?? fallbackSessionId;
         const phone = binding.phone;
+        if (binding.qr_code) setQrCodeByDeviceId((prev) => ({ ...prev, [deviceId]: binding.qr_code }));
+        if (binding.expires_at) setQrExpiresAtByDeviceId((prev) => ({ ...prev, [deviceId]: binding.expires_at }));
         addLog(
           log(
             'http',
             'Poll binding status',
             `GET /api/v1/auth/bind/status/${nextBindingId} · ${nextStatus}`,
-            JSON.stringify({ binding_id: nextBindingId, session_id: sessionId, status: nextStatus, attempt, next_poll_after_seconds: binding.poll_after_seconds ?? defaultPollAfterSeconds }, null, 2),
+            JSON.stringify(
+              {
+                binding_id: nextBindingId,
+                session_id: sessionId,
+                status: nextStatus,
+                attempt,
+                has_qr: Boolean(binding.qr_code),
+                expires_at: binding.expires_at,
+                next_poll_after_seconds: binding.poll_after_seconds ?? defaultPollAfterSeconds,
+              },
+              null,
+              2,
+            ),
             'GET',
             docsTag('Authentication'),
           ),

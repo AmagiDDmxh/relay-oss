@@ -172,6 +172,8 @@ export interface BindStatusResponse {
   device_id?: string;
   owner_context?: OwnerContext;
   phone?: string;
+  qr_code?: string;
+  expires_at?: string;
   error?: string;
   poll_after_seconds: number;
   attempt_id?: string;
